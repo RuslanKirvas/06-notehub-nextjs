@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useDebouncedCallback } from "use-debounce";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchNotes, deleteNote, createNote, CreateNoteData } from "@/lib/api";
+import { useQuery } from "@tanstack/react-query";
+import { fetchNotes } from "@/lib/api";
 import NoteList from "@/components/NoteList/NoteList";
 import SearchBox from "@/components/SearchBox/SearchBox";
 import Pagination from "@/components/Pagination/Pagination";
@@ -16,8 +16,6 @@ export default function NotesClient() {
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const queryClient = useQueryClient();
-
   const debouncedSetSearch = useDebouncedCallback((value: string) => {
     setSearch(value);
     setPage(1);
@@ -27,30 +25,8 @@ export default function NotesClient() {
     queryKey: ["notes", page, search],
     queryFn: () => fetchNotes({ page, perPage: 12, search }),
     placeholderData: (prev) => prev,
+    refetchOnMount: false,
   });
-
-  const createMutation = useMutation({
-    mutationFn: createNote,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notes"] });
-      setIsModalOpen(false);
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: deleteNote,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notes"] });
-    },
-  });
-
-  const handleCreateNote = (data: CreateNoteData) => {
-    createMutation.mutate(data);
-  };
-
-  const handleDeleteNote = (id: string) => {
-    deleteMutation.mutate(id);
-  };
 
   if (isLoading) return <p>Loading, please wait...</p>;
   if (error) return <p>Could not fetch the list of notes. {error.message}</p>;
@@ -75,7 +51,7 @@ export default function NotesClient() {
       </header>
 
       {notes.length > 0 ? (
-        <NoteList notes={notes} onDelete={handleDeleteNote} />
+        <NoteList notes={notes} />
       ) : (
         <p>No notes yet. Create your first note!</p>
       )}
@@ -83,8 +59,8 @@ export default function NotesClient() {
       {isModalOpen && (
         <Modal onClose={() => setIsModalOpen(false)}>
           <NoteForm
-            onSubmit={handleCreateNote}
             onCancel={() => setIsModalOpen(false)}
+            onSuccess={() => setIsModalOpen(false)}
           />
         </Modal>
       )}
